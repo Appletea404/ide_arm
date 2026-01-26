@@ -127,13 +127,13 @@ int main(void)
 	  		if (rxData[0] == 'c') //c 들어가면 왼쪽으로 이동
 	  		{
 	  			ledLeft(&i);
-	  			rxData[0] = 0;	//계속 c인 상태를 반복하므로 rxData를 0으로 초기화
+	  			rxData[0] = NULL;	//계속 c인 상태를 반복하므로 rxData를 0으로 초기화
 	  		}
 
 	  		if (rxData[0] == 'd') //d 들어가면 오른쪽으로 이동
 	  		{
 	  			ledRight(&i);
-	  			rxData[0] = 0;
+	  			rxData[0] = NULL;
 	  		}
 
 
