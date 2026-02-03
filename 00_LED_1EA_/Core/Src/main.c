@@ -100,7 +100,9 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  ledMiddleShift(num);
+//	  ledMiddleShift(8);
+
+	  ledOn(8);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

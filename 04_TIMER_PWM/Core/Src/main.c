@@ -133,7 +133,7 @@ int main(void)
 		}
 
 		if (rxData[0] == 'b') {
-			TIM3->CCR1 = 140;/
+			TIM3->CCR1 = 140;
 //			rxData[0] = NULL;
 
 
