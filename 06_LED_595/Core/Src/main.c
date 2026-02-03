@@ -64,10 +64,83 @@ void delay_us(uint16_t us)
 	while((__HAL_TIM_GET_COUNTER(&htim11) - start) < us);
 }
 
+//HAL_gettick을 안쓰는 이유?
+
+
+
+/*
+ * dataOut()
+ *
+ * SN74HC595(8bit Shift Register + Latch)에
+ * 1바이트(8비트) 데이터를 직렬로 전송한 뒤,
+ * 래치 클럭을 통해 출력(QA~QH)에 한 번에 반영하는 함수
+ *
+ * 핀 역할 요약
+ * ------------------------------------------------
+ * SER   : 직렬 데이터 입력 (DS)
+ * SRCLK : 시프트 클럭 (SH_CP)
+ *         → 상승엣지에서 SER 값이 내부 쉬프트 레지스터로 이동
+ * RCLK  : 래치 클럭 (ST_CP)
+ *         → 상승엣지에서 쉬프트 레지스터 값이 출력 래치로 복사
+ *
+ * 동작 흐름
+ * ------------------------------------------------
+ * 1. data의 MSB(bit7)부터 LSB(bit0)까지 한 비트씩 처리
+ * 2. 현재 비트를 SER 핀에 출력
+ * 3. SRCLK을 토글하여 해당 비트를 쉬프트 레지스터로 밀어넣음
+ * 4. 총 8비트 전송 완료 후
+ * 5. RCLK을 토글하여 출력 QA~QH에 한 번에 반영
+ *
+ * 특징
+ * ------------------------------------------------
+ * - MSB First 방식
+ * - GPIO bit-banging 방식 (SPI 미사용)
+ * - 래치 구조 덕분에 전송 중 출력이 변하지 않아 LED 깜빡임 없음
+ */
+/*
+ * dataOut()
+ *
+ * SN74HC595(8bit Shift Register + Latch)에
+ * 1바이트(8비트) 데이터를 직렬로 전송한 뒤,
+ * 래치 클럭을 통해 출력(QA~QH)에 한 번에 반영하는 함수
+ *
+ * 핀 역할 요약
+ * ------------------------------------------------
+ * SER   : 직렬 데이터 입력 (DS)
+ * SRCLK : 시프트 클럭 (SH_CP)
+ *         → 상승엣지에서 SER 값이 내부 쉬프트 레지스터로 이동
+ * RCLK  : 래치 클럭 (ST_CP)
+ *         → 상승엣지에서 쉬프트 레지스터 값이 출력 래치로 복사
+ *
+ * 동작 흐름
+ * ------------------------------------------------
+ * 1. data의 MSB(bit7)부터 LSB(bit0)까지 한 비트씩 처리
+ * 2. 현재 비트를 SER 핀에 출력
+ * 3. SRCLK을 토글하여 해당 비트를 쉬프트 레지스터로 밀어넣음
+ * 4. 총 8비트 전송 완료 후
+ * 5. RCLK을 토글하여 출력 QA~QH에 한 번에 반영
+ *
+ * 특징
+ * ------------------------------------------------
+ * - MSB First 방식
+ * - GPIO bit-banging 방식 (SPI 미사용)
+ * - 래치 구조 덕분에 전송 중 출력이 변하지 않아 LED 깜빡임 없음
+ */
 void dataOut(uint8_t data)
 {
+    /*
+     * i = 7 → 0
+     * MSB부터 LSB까지 순차적으로 전송
+     */
 	for(int i = 7; i >= 0; i--)
 	{
+        /*
+         * 현재 전송할 비트를 SER 핀에 출력
+         * data의 i번째 비트가 1이면 HIGH, 0이면 LOW
+         *
+         * 이 시점에서는 아직 74HC595 내부로 들어가지 않고
+         * 단순히 입력 핀에 값만 세팅된 상태
+         */
 		if(data & (1 << i))
 		{
 			HAL_GPIO_WritePin(GPIO_PORT, SER_PIN, GPIO_PIN_SET);
@@ -77,20 +150,36 @@ void dataOut(uint8_t data)
 			HAL_GPIO_WritePin(GPIO_PORT, SER_PIN, GPIO_PIN_RESET);
 		}
 
-		//시프트 클럭 생성
+        /*
+         * SRCLK(Shift Clock) 펄스 생성
+         *
+         * - SRCLK의 상승엣지에서 SER 값이
+         *   내부 쉬프트 레지스터로 이동
+         * - 이후 비트들은 한 칸씩 밀려남
+         *
+         * delay_us()는 setup/hold time 확보용 여유
+         */
 		HAL_GPIO_WritePin(GPIO_PORT, SRCLK_PIN, GPIO_PIN_SET);
 		delay_us(5);
 
 		HAL_GPIO_WritePin(GPIO_PORT, SRCLK_PIN, GPIO_PIN_RESET);
 		delay_us(5);
-
 	}
 
-	//래치클럭
+    /*
+     * RCLK(Latch Clock) 펄스 생성
+     *
+     * - 지금까지 쉬프트 레지스터에 쌓인 8비트 데이터를
+     *   출력 래치로 복사
+     * - QA~QH 핀이 이 순간에만 갱신됨
+     *
+     * 장점:
+     * - 데이터 전송 중에는 출력이 바뀌지 않음
+     * - LED/FND 사용 시 중간 상태가 보이지 않음
+     */
 	HAL_GPIO_WritePin(GPIO_PORT, RCLK_PIN, GPIO_PIN_SET);
 	delay_us(10);
 	HAL_GPIO_WritePin(GPIO_PORT, RCLK_PIN, GPIO_PIN_RESET);
-
 }
 
 
